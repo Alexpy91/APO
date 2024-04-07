@@ -251,7 +251,7 @@ plt.grid(True)
 
 print(f"RESULTS_____________________________"
       f"\nНачальное значение I = {Result_I['I_old']} \nМинимальное значение I = {Result_I['I']} "
-      f"\nНачальные значения коэффициентов: q1 = {Result_I['q1_old']} "
+      f"\nНачальные значения коэффициентов q: q1 = {Result_I['q1_old']} "
       f"q2 = {Result_I['q2_old']} q3 = {Result_I['q3_old']} "
       f"\nЗначения коффициентов: q1 = {Result_I['q1']} "
       f"q2 = {Result_I['q2']} q3 = {Result_I['q3']}  \nНомер итерации: {Result_I['Iter']} "
