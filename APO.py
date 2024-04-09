@@ -8,7 +8,7 @@ kob = 1.6
 Tob = 0.225  # Данные объекта управления
 si = 6.37
 
-count_s0 = 10
+count_s0 = 1
 z = 2  # Задание регулятора
 q1 = 2.1
 q2 = 0.8  # Кэффициенты ШИМ регулятора
@@ -35,11 +35,15 @@ data_u = []
 data_eps = []
 data_s1 = data_s2 = data_s3 = []
 data_dq1 = data_dq2 = data_dq3 = []
-data_delta = data_y_delta = []
+data_delta = []
+data_y_delta = []
+data_delta1 = []
+data_y_delta1 = []
 data_ksi1 = data_ksi1 = data_ksi3 = []
 data_dutk = []
 data_I = []
 data_I_old = []
+ureg_delta = 0
 
 dI = 0
 dI_old = 0
@@ -58,10 +62,14 @@ ns_delta = int(tau / dt)  # Исходные переменные
 
 # __________________
 
-def delta_fun():  # Функция для вычисления весовой функции
+def delta_fun(x):  # Функция для вычисления весовой функции
     global ureg_delta, y1_delta, z1_delta, z2_delta, m_delta, y_delta, y_delta_old, delta
-    u_delta = 1  # Единичное воздействие
-    ureg_delta += kim * u_delta * dt  # исполнительный механизм (kim/P)
+     #  u_delta - Единичное воздействие
+    if x == 1:
+        u_delta = 1
+    else:
+        u_delta = 0
+    ureg_delta += kim * u_delta * dt   # исполнительный механизм (kim/P)
     y1_delta = z1_delta  # моделирование объекта по Рунге-Кутту
     k1_delta = dt * (z2_delta - si / Tob * y1_delta)
     m1_delta = dt * (kob / Tob * ureg_delta - y1_delta / Tob)
@@ -149,10 +157,9 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
 
     while s1 <= L:
 
-        delta_fun()  # запуск дельта
-        # data_delta.append(delta)
-        # data_y_delta.append(y_delta)
-
+        # delta_fun(0)  # запуск дельта
+        data_delta.append(delta)
+        data_y_delta.append(y_delta)
         if s2 < T:  # Цикл до T пока период не закончен
 
             if s3 < tk:  # Пока s3 не достигла tk  dt * T < s3 <= tk + dt * T:
@@ -170,10 +177,13 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
             if (u != u_old) and (u == 0):  # если новое
 
                 # здесь опрос всего для АПО в момент разрыва
+                delta_fun(1)  # запуск дельта
                 dutk = u - u_old  # определение скачка -1 или +1
                 dtk_dq1 = 1 - q2 * ksi_1 - 2 * q3 * eps_KT * ksi_1  # частн пр по q1
                 dtk_dq2 = eps_KT - q2 * ksi_2 - 2 * q3 * eps_KT * ksi_2  # по q2
                 dtk_dq3 = -q2 * ksi_3 + (eps_KT * eps_KT) - 2 * q3 * eps_KT * ksi_3  # q3
+                data_delta1.append(delta)
+                data_y_delta1.append(y_delta)
 
                 ksi_1 += - (dutk * dtk_dq1 * delta)  # функция чувствительности 1
                 ksi_2 += - (dutk * dtk_dq2 * delta)  # функция чувствительности 2
@@ -231,8 +241,8 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
     #     h *= 0.9
     if dq1 != 0 or dq2 != 0 or dq3 != 0:
         q1 = q1 + (h * (dq1 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))
-        q2 = q2 + (h * (dq2 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))  # Коррекция q1,2,3
-        q3 = q3 + (h * (dq3 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))
+        # q2 = q2 + (h * (dq2 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))  # Коррекция q1,2,3
+        # q3 = q3 + (h * (dq3 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))
     # ______________APO
 
     s0 += 1
@@ -241,20 +251,21 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
 
 color_line = ['', 'blue', 'green', 'red', 'yellow']  # цвета для графиков
 
-plt.plot(data_y_delta, "b", color=color_line[2])  # TESTING
-plt.plot(data_delta, "b", color=color_line[2])  # TESTING
+plt.plot(data_delta1, "b", color=color_line[2])  # TESTING
+plt.plot(data_y_delta1, "b", color=color_line[1])  # TESTING
 plt.title('Импульсы ШИМ регулятора  ')
 plt.ylabel('Amplitude')
 plt.xlabel('Time(sec)')
 plt.grid(True)
-# plt.show()
+plt.show()
 
 print(f"RESULTS_____________________________"
       f"\nНачальное значение I = {Result_I['I_old']} \nМинимальное значение I = {Result_I['I']} "
-      f"\nНачальные значения коэффициентов q: q1 = {Result_I['q1_old']} "
+      f"\nНачальные значения коэффициентов: q1 = {Result_I['q1_old']} "
       f"q2 = {Result_I['q2_old']} q3 = {Result_I['q3_old']} "
       f"\nЗначения коффициентов: q1 = {Result_I['q1']} "
       f"q2 = {Result_I['q2']} q3 = {Result_I['q3']}  \nНомер итерации: {Result_I['Iter']} "
       f"\n_______________________"
       f"\nКоэффициенты после итоговой коррекции: q1 = {q1} q2 = {q2} q3 = {q3} "
       f" \nЗначение I итоговое = {I} \nИтоговое число итераций = {count_iter}")
+
