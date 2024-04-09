@@ -157,7 +157,7 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
 
     while s1 <= L:
 
-        # delta_fun(0)  # запуск дельта
+        delta_fun(0)  # запуск дельта
         data_delta.append(delta)
         data_y_delta.append(y_delta)
         if s2 < T:  # Цикл до T пока период не закончен
