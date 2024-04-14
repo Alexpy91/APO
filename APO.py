@@ -8,9 +8,9 @@ kob = 1.6
 Tob = 0.225  # Данные объекта управления
 si = 6.37
 
-count_s0 = 1
-z = 2  # Задание регулятора
-q1 = 2.1
+count_s0 = 10
+z = 1  # Задание регулятора
+q1 = 5.1
 q2 = 0.8  # Кэффициенты ШИМ регулятора
 q3 = 0.4
 kim = 0.07  # значение коэф исполнительного механизма
@@ -136,6 +136,7 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
     z1, z2 = 0, 0
     z1_delta, z2_delta = 0, 0
     ksi_1, ksi_2, ksi_3 = 0, 0, 0
+    ksi_1_KT, ksi_2_KT, ksi_3_KT = 0, 0, 0
     dq1 = dq2 = dq3 = 0
     dq1_old = dq2_old = dq3_old = 0
     ureg = 0
@@ -179,15 +180,13 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
                 # здесь опрос всего для АПО в момент разрыва
                 delta_fun(1)  # запуск дельта
                 dutk = u - u_old  # определение скачка -1 или +1
-                dtk_dq1 = 1 - q2 * ksi_1 - 2 * q3 * eps_KT * ksi_1  # частн пр по q1
-                dtk_dq2 = eps_KT - q2 * ksi_2 - 2 * q3 * eps_KT * ksi_2  # по q2
-                dtk_dq3 = -q2 * ksi_3 + (eps_KT * eps_KT) - 2 * q3 * eps_KT * ksi_3  # q3
+                dtk_dq1 = 1 - q2 * ksi_1_KT - 2 * q3 * eps_KT * ksi_1_KT  # частн пр по q1
+                dtk_dq2 = eps_KT - q2 * ksi_2_KT - 2 * q3 * eps_KT * ksi_2_KT  # по q2
+                dtk_dq3 = -q2 * ksi_3_KT + (eps_KT * eps_KT) - 2 * q3 * eps_KT * ksi_3_KT  # q3
                 data_delta1.append(delta)
                 data_y_delta1.append(y_delta)
 
-                ksi_1 += - (dutk * dtk_dq1 * delta)  # функция чувствительности 1
-                ksi_2 += - (dutk * dtk_dq2 * delta)  # функция чувствительности 2
-                ksi_3 += - (dutk * dtk_dq3 * delta)  # функция чувствительности 3
+
 
                 dq1 += -2 * eps * ksi_1 * dt  # Направл градиента q1
                 dq2 += -2 * eps * ksi_2 * dt  # Направл градиента q2
@@ -202,6 +201,9 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
         else:  # Иначе если мы дошли до конца периода T
             # print(s2)
             eps_KT = z - y  # Определ ошибку в точке KT
+            ksi_1_KT += - (dutk * dtk_dq1 * delta)  # функция чувствительности 1
+            ksi_2_KT += - (dutk * dtk_dq2 * delta)  # функция чувствительности 2
+            ksi_3_KT += - (dutk * dtk_dq3 * delta)  # функция чувствительности 3
             tk = q1 + q2 * eps_KT + q3 * (eps_KT * eps_KT)  # Определ модуляционную характеристику для след T
 
             # data_tk.append(tk)
@@ -213,7 +215,9 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
         s1 += dt
         eps = z - y  # определение ошибки системы
         I += (eps * eps) * dt  # Рассчет интегрального критерия
-
+        ksi_1 += - (dutk * dtk_dq1 * delta)  # функция чувствительности 1
+        ksi_2 += - (dutk * dtk_dq2 * delta)  # функция чувствительности 2
+        ksi_3 += - (dutk * dtk_dq3 * delta)  # функция чувствительности 3
         # data_y.append(y)
         # data_point.append(s1)
         # data_eps.append(eps)
@@ -236,13 +240,13 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
     # _______КОРРЕКТОР___________
 
     # if I < I_old:
-    #     h *= 1.1    #  Коррекция шага
+    #     h *= 1.5    #  Коррекция шага
     # else:
-    #     h *= 0.9
+    #     h *= 0.5
     if dq1 != 0 or dq2 != 0 or dq3 != 0:
         q1 = q1 + (h * (dq1 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))
-        # q2 = q2 + (h * (dq2 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))  # Коррекция q1,2,3
-        # q3 = q3 + (h * (dq3 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))
+        q2 = q2 + (h * (dq2 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))  # Коррекция q1,2,3
+        q3 = q3 + (h * (dq3 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))
     # ______________APO
 
     s0 += 1
