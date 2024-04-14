@@ -205,7 +205,7 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
             ksi_2_KT += - (dutk * dtk_dq2 * delta)  # функция чувствительности 2
             ksi_3_KT += - (dutk * dtk_dq3 * delta)  # функция чувствительности 3
             tk = q1 + q2 * eps_KT + q3 * (eps_KT * eps_KT)  # Определ модуляционную характеристику для след T
-
+	    # ksi KT add
             # data_tk.append(tk)
             s2 = 0
             s3 = 0
