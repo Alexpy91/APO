@@ -8,16 +8,16 @@ kob = 1.6
 Tob = 0.225  # Данные объекта управления
 si = 6.37
 
-count_s0 = 10
-z = 1  # Задание регулятора
-q1 = 5.1
+count_s0 = 1
+z = 2  # Задание регулятора
+q1 = 2.1
 q2 = 0.8  # Кэффициенты ШИМ регулятора
 q3 = 0.4
 kim = 0.07  # значение коэф исполнительного механизма
 dt = 0.05  # Шаг dt
 L = 200  # конечное значение шага при моделировании
 tau = 1.75  # Значение запаздывания для объекта
-h = 0.018  # 0.018
+h = 0.004  # 0.018
 T = 5  # Период ШИМ  # Корректируемые переменные
 
 # ____________________
@@ -33,17 +33,20 @@ data_y = []
 data_tk = []
 data_u = []
 data_eps = []
-data_s1 = data_s2 = data_s3 = []
-data_dq1 = data_dq2 = data_dq3 = []
+data_eps_KT = []
+data_s1, data_s2, data_s3 = [], [], []
+data_dq1, data_dq2, data_dq3 = [], [], []
 data_delta = []
 data_y_delta = []
 data_delta1 = []
 data_y_delta1 = []
-data_ksi1 = data_ksi1 = data_ksi3 = []
+data_ksi1, data_ksi2, data_ksi3 = [], [], []
+data_ksi1_KT = []
 data_dutk = []
 data_I = []
 data_I_old = []
 ureg_delta = 0
+data_dtk_dq1, data_dtk_dq2, data_dtk_dq3 = [], [], []
 
 dI = 0
 dI_old = 0
@@ -55,21 +58,22 @@ nsi = ndi1 = ndi2 = ndi3 = 0
 I = 0
 I_old = 0
 dutk = 0
-dtk_dq1 = dtk_dq2 = dtk_dq3 = 0
+dtk_dq1, dtk_dq2, dtk_dq3 = 0, 0, 0
 
 ns = int(tau / dt)
 ns_delta = int(tau / dt)  # Исходные переменные
+
 
 # __________________
 
 def delta_fun(x):  # Функция для вычисления весовой функции
     global ureg_delta, y1_delta, z1_delta, z2_delta, m_delta, y_delta, y_delta_old, delta
-     #  u_delta - Единичное воздействие
+    #  u_delta - Единичное воздействие
     if x == 1:
         u_delta = 1
     else:
         u_delta = 0
-    ureg_delta += kim * u_delta * dt   # исполнительный механизм (kim/P)
+    ureg_delta += kim * u_delta * dt  # исполнительный механизм (kim/P)
     y1_delta = z1_delta  # моделирование объекта по Рунге-Кутту
     k1_delta = dt * (z2_delta - si / Tob * y1_delta)
     m1_delta = dt * (kob / Tob * ureg_delta - y1_delta / Tob)
@@ -93,6 +97,7 @@ def delta_fun(x):  # Функция для вычисления весовой �
 
     # _________________
 
+
 def model():  # Функция модели объекта с регулятором
     global ureg, y1, z1, z2, m, y
     ureg += kim * u * dt  # Исполнительный механизм kim/P u - выход регул
@@ -114,6 +119,7 @@ def model():  # Функция модели объекта с регулятор
     mas[m] = y1
     m += 1
 
+
 # ЗДЕСЬ НАЧИНАЕТСЯ АЛГОРИТМ ПРОГРАММЫ
 
 while s0 < count_s0:  # (I > 82) or (s0 == 0):
@@ -129,7 +135,7 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
     k1, k2, k3, k4 = 0, 0, 0, 0
     m, m1, m2, m3, m4 = 0, 0, 0, 0, 0
 
-    k1_delta = k2_delta = k3_delta = k4_delta = 0
+    k1_delta, k2_delta, k3_delta, k4_delta = 0, 0, 0, 0
     m_delta, m1_delta, m2_delta, m3_delta, m4_delta = 0, 0, 0, 0, 0
     y, y_delta = 0, 0
     y1, y1_delta = 0, 0
@@ -137,8 +143,8 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
     z1_delta, z2_delta = 0, 0
     ksi_1, ksi_2, ksi_3 = 0, 0, 0
     ksi_1_KT, ksi_2_KT, ksi_3_KT = 0, 0, 0
-    dq1 = dq2 = dq3 = 0
-    dq1_old = dq2_old = dq3_old = 0
+    dq1, dq2, dq3 = 0, 0, 0
+    dq1_old, dq2_old, dq3_old = 0, 0, 0
     ureg = 0
     ureg_delta = 0
     dI = 0
@@ -179,36 +185,50 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
 
                 # здесь опрос всего для АПО в момент разрыва
                 delta_fun(1)  # запуск дельта
+
                 dutk = u - u_old  # определение скачка -1 или +1
+
                 dtk_dq1 = 1 - q2 * ksi_1_KT - 2 * q3 * eps_KT * ksi_1_KT  # частн пр по q1
                 dtk_dq2 = eps_KT - q2 * ksi_2_KT - 2 * q3 * eps_KT * ksi_2_KT  # по q2
                 dtk_dq3 = -q2 * ksi_3_KT + (eps_KT * eps_KT) - 2 * q3 * eps_KT * ksi_3_KT  # q3
-                data_delta1.append(delta)
-                data_y_delta1.append(y_delta)
-
-
 
                 dq1 += -2 * eps * ksi_1 * dt  # Направл градиента q1
                 dq2 += -2 * eps * ksi_2 * dt  # Направл градиента q2
                 dq3 += -2 * eps * ksi_3 * dt  # Направл градиента q3
 
+                # ____________________________
+
+                data_delta1.append(delta)
+                data_y_delta1.append(y_delta)
+                data_dutk.append(dutk)
+                data_dtk_dq1.append(dtk_dq1)
+                data_dtk_dq2.append(dtk_dq2)
+                data_dtk_dq3.append(dtk_dq3)
+                data_dq1.append(dq1)
+                data_dq2.append(dq2)
+                data_dq3.append(dq3)
+
                 # _______________________________________-
 
             u_old = u  # запоминаем предыдущее значение выхода регулятора
             s2 += dt
-            # data_dutk.append(dutk)
 
-        else:  # Иначе если мы дошли до конца периода T
-            # print(s2)
+
+        else:   # Иначе если мы дошли до конца периода T
             eps_KT = z - y  # Определ ошибку в точке KT
             ksi_1_KT += - (dutk * dtk_dq1 * delta)  # функция чувствительности 1
             ksi_2_KT += - (dutk * dtk_dq2 * delta)  # функция чувствительности 2
             ksi_3_KT += - (dutk * dtk_dq3 * delta)  # функция чувствительности 3
             tk = q1 + q2 * eps_KT + q3 * (eps_KT * eps_KT)  # Определ модуляционную характеристику для след T
-	    # ksi KT add
-            # data_tk.append(tk)
+
             s2 = 0
             s3 = 0
+
+            # ____________________________
+
+            data_ksi1_KT.append(ksi_1_KT)
+            data_tk.append(tk)
+            data_eps_KT.append(eps_KT)
 
         model()  # модель с регулятором
 
@@ -218,9 +238,15 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
         ksi_1 += - (dutk * dtk_dq1 * delta)  # функция чувствительности 1
         ksi_2 += - (dutk * dtk_dq2 * delta)  # функция чувствительности 2
         ksi_3 += - (dutk * dtk_dq3 * delta)  # функция чувствительности 3
-        # data_y.append(y)
-        # data_point.append(s1)
-        # data_eps.append(eps)
+
+        # __________________________
+        data_y.append(y)
+        data_ksi1.append(ksi_1)
+        data_ksi2.append(ksi_2)
+        data_ksi3.append(ksi_3)
+        data_I.append(I)
+        data_eps.append(eps)
+
     s1 = 0
 
     # _______Для вывода_______
@@ -245,8 +271,8 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
     #     h *= 0.5
     if dq1 != 0 or dq2 != 0 or dq3 != 0:
         q1 = q1 + (h * (dq1 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))
-        q2 = q2 + (h * (dq2 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))  # Коррекция q1,2,3
-        q3 = q3 + (h * (dq3 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))
+        # q2 = q2 + (h * (dq2 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))  # Коррекция q1,2,3
+        # q3 = q3 + (h * (dq3 / (math.sqrt(dq1 ** 2 + dq2 ** 2 + dq3 ** 2))))
     # ______________APO
 
     s0 += 1
@@ -255,8 +281,8 @@ while s0 < count_s0:  # (I > 82) or (s0 == 0):
 
 color_line = ['', 'blue', 'green', 'red', 'yellow']  # цвета для графиков
 
-plt.plot(data_delta1, "b", color=color_line[2])  # TESTING
-plt.plot(data_y_delta1, "b", color=color_line[1])  # TESTING
+plt.plot(data_y, "b", color=color_line[2])  # TESTING
+# plt.plot(data_y_delta1, "b", color=color_line[1])  # TESTING
 plt.title('Импульсы ШИМ регулятора  ')
 plt.ylabel('Amplitude')
 plt.xlabel('Time(sec)')
@@ -272,4 +298,3 @@ print(f"RESULTS_____________________________"
       f"\n_______________________"
       f"\nКоэффициенты после итоговой коррекции: q1 = {q1} q2 = {q2} q3 = {q3} "
       f" \nЗначение I итоговое = {I} \nИтоговое число итераций = {count_iter}")
-
